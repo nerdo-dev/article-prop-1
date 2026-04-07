@@ -4,7 +4,7 @@ A Vite app for writing, previewing, and publishing proposal snapshots. Published
 
 <!-- noop: force a fresh deployment on Vercel -->
 
-## Local development. 
+## Local development.  
 
 Prerequisites:
 - Node.js
