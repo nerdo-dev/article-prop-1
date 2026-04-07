@@ -2,6 +2,8 @@
 
 A Vite app for writing, previewing, and publishing proposal snapshots. Published proposals are stored in Vercel Blob and shared as public `?blob=...` links.
 
+<!-- noop: force a fresh deployment on Vercel -->
+
 ## Local development
 
 Prerequisites:
