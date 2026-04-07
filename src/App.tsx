@@ -46,6 +46,13 @@ export default function App() {
   const proposalSlug = isValidSlug ? pathSlug : null;
   const isPublicView = !!proposalSlug;
 
+  // Debug logging - check browser console
+  console.log("[v0] pathname:", window.location.pathname);
+  console.log("[v0] pathSlug:", pathSlug);
+  console.log("[v0] isValidSlug:", isValidSlug);
+  console.log("[v0] proposalSlug:", proposalSlug);
+  console.log("[v0] isPublicView:", isPublicView);
+
   useEffect(() => {
     if (!isPublicView) {
       setIsEditing(true);
