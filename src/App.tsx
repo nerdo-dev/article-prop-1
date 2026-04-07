@@ -39,9 +39,19 @@ export default function App() {
   const [showPublishModal, setShowPublishModal] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
 
-  const urlParams = new URLSearchParams(window.location.search);
-  const proposalSlug = urlParams.get('slug');
+  // Extract slug from URL path (e.g., /master-log)
+  // Only valid slugs (lowercase alphanumeric with hyphens) are treated as public proposals
+  const pathSlug = window.location.pathname.slice(1); // Remove leading "/"
+  const isValidSlug = /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(pathSlug);
+  const proposalSlug = isValidSlug ? pathSlug : null;
   const isPublicView = !!proposalSlug;
+
+  // Debug logging - check browser console
+  console.log("[v0] pathname:", window.location.pathname);
+  console.log("[v0] pathSlug:", pathSlug);
+  console.log("[v0] isValidSlug:", isValidSlug);
+  console.log("[v0] proposalSlug:", proposalSlug);
+  console.log("[v0] isPublicView:", isPublicView);
 
   useEffect(() => {
     if (!isPublicView) {
@@ -281,12 +291,12 @@ export default function App() {
       {isEditing ? (
         <main className="max-w-[600px] mx-auto w-full border-x border-gray-800 min-h-screen flex flex-col pb-20">
           {/* Cover Image Editor */}
-          <div className="relative w-full aspect-[21/9] bg-gray-900 group">
+          <div className="relative w-full aspect-[5/2] bg-gray-900 group">
             {coverImage ? (
               <>
                 <img src={coverImage} alt="Cover" className="w-full h-full object-cover" />
                 <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center space-x-4">
-                  <label className="p-3 bg-gray-800 rounded-full hover:bg-gray-700 cursor-pointer text-white" title="Change Image">
+                  <label className="p-3 bg-gray-800 rounded-full hover:bg-gray-700 cursor-pointer text-white" title="Change Image (Recommended: 2.5:1 aspect ratio for X/Twitter)">
                     <ImagePlus className="w-5 h-5" />
                     <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
                   </label>
@@ -295,10 +305,11 @@ export default function App() {
                   </button>
                 </div>
               </>
-            ) : (
-              <label className="absolute inset-0 flex flex-col items-center justify-center cursor-pointer hover:bg-gray-800 transition-colors text-gray-500">
-                <ImagePlus className="w-8 h-8 mb-2" />
-                <span>Add cover image</span>
+                ) : (
+                  <label className="absolute inset-0 flex flex-col items-center justify-center cursor-pointer hover:bg-gray-800 transition-colors text-gray-500">
+                    <ImagePlus className="w-8 h-8 mb-2" />
+                    <span className="text-sm font-medium">Add cover image</span>
+                    <span className="text-xs text-gray-600 mt-1">Best: 2.5:1 ratio (1250×500px)</span>
                 <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
               </label>
             )}
@@ -336,13 +347,13 @@ export default function App() {
       ) : (
         <main className="max-w-[600px] mx-auto w-full border-x border-gray-800 min-h-screen">
           
-          {/* Cover Image */}
-          {coverImage ? (
-            <div className="w-full aspect-[21/9] bg-gray-900 overflow-hidden">
+        {/* Cover Image */}
+        {coverImage ? (
+          <div className="w-full aspect-[5/2] bg-gray-900 overflow-hidden">
               <img src={coverImage} alt="Cover" className="w-full h-full object-cover" />
             </div>
-          ) : (
-            <div className="w-full aspect-[21/9] bg-gradient-to-br from-gray-900 to-black border-b border-gray-800 flex items-center justify-center">
+        ) : (
+          <div className="w-full aspect-[5/2] bg-gradient-to-br from-gray-900 to-black border-b border-gray-800 flex items-center justify-center">
               <span className="text-gray-600 font-mono text-sm">No cover image uploaded</span>
             </div>
           )}
