@@ -39,8 +39,10 @@ export default function App() {
   const [showPublishModal, setShowPublishModal] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
 
+  // Extract slug from URL path (e.g., /master-log) or query param (e.g., ?slug=master-log)
   const urlParams = new URLSearchParams(window.location.search);
-  const proposalSlug = urlParams.get('slug');
+  const pathSlug = window.location.pathname.slice(1); // Remove leading "/"
+  const proposalSlug = urlParams.get('slug') || (pathSlug && pathSlug !== '' ? pathSlug : null);
   const isPublicView = !!proposalSlug;
 
   useEffect(() => {
