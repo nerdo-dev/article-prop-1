@@ -1,4 +1,4 @@
-import { BlobNotFoundError, head, put } from '@vercel/blob';
+import { put, list } from '@vercel/blob';
 
 export interface PublishProposalInput {
   title: string;
@@ -28,6 +28,7 @@ export class ProposalApiError extends Error {
 
 function requireBlobToken() {
   const token = process.env.BLOB_READ_WRITE_TOKEN;
+  console.log('[v0] Checking BLOB_READ_WRITE_TOKEN:', token ? 'present' : 'missing');
 
   if (!token || token.startsWith('REPLACE_WITH_')) {
     throw new ProposalApiError(
@@ -138,6 +139,8 @@ export async function publishProposal(input: PublishProposalInput, origin: strin
   requireBlobToken();
 
   const id = crypto.randomUUID();
+  console.log('[v0] Publishing proposal:', id);
+  
   const snapshot: ProposalSnapshot = {
     id,
     title: input.title,
@@ -146,15 +149,23 @@ export async function publishProposal(input: PublishProposalInput, origin: strin
     createdAt: new Date().toISOString(),
   };
 
-  await put(proposalPath(id), JSON.stringify(snapshot), {
-    access: 'public',
-    addRandomSuffix: false,
-    contentType: 'application/json; charset=utf-8',
-  });
+  console.log('[v0] Snapshot created, uploading to blob...');
+  try {
+    const result = await put(proposalPath(id), JSON.stringify(snapshot), {
+      access: 'public',
+      addRandomSuffix: false,
+      contentType: 'application/json; charset=utf-8',
+    });
+    console.log('[v0] Blob uploaded successfully:', result.url);
+  } catch (err) {
+    console.error('[v0] Error uploading to blob:', err);
+    throw err;
+  }
 
   const shareUrl = new URL('/', origin);
   shareUrl.searchParams.set('id', id);
 
+  console.log('[v0] Publishing complete, share URL:', shareUrl.toString());
   return {
     id,
     shareUrl: shareUrl.toString(),
@@ -165,22 +176,33 @@ export async function fetchProposal(id: string | null | undefined) {
   requireBlobToken();
 
   const validId = assertValidProposalId(id);
+  const path = proposalPath(validId);
+  
   try {
-    const blob = await head(proposalPath(validId));
+    // Use list to find the blob by prefix, then fetch it
+    const { blobs } = await list({ prefix: path });
+    
+    if (blobs.length === 0) {
+      throw new ProposalApiError(404, 'Proposal not found.');
+    }
+    
+    const blob = blobs[0];
     const response = await fetch(blob.url);
 
     if (!response.ok) {
-      throw new ProposalApiError(404, 'Proposal not found.');
+      throw new ProposalApiError(500, 'Failed to fetch proposal content.');
     }
 
     const payload = await response.json();
     return parseStoredSnapshot(payload);
   } catch (error) {
-    if (error instanceof BlobNotFoundError) {
-      throw new ProposalApiError(404, 'Proposal not found.');
+    if (error instanceof ProposalApiError) {
+      throw error;
     }
-
-    throw error;
+    
+    // Handle fetch errors (network issues, etc.)
+    console.error('Fetch error:', error);
+    throw new ProposalApiError(500, 'Failed to fetch proposal.');
   }
 }
 

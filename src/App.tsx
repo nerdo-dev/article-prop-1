@@ -152,6 +152,8 @@ export default function App() {
       }
 
       const link = payload?.shareUrl;
+      console.log('[v0] Publish response:', payload);
+      console.log('[v0] Share URL type:', typeof link, 'value:', link);
       if (typeof link !== 'string') {
         throw new Error('Publish API returned an invalid share URL.');
       }
