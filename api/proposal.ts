@@ -7,7 +7,10 @@ export default async function handler(request: any, response: any) {
   }
 
   try {
-    const proposal = await fetchProposal(request.query?.id);
+    const proposal = await fetchProposal({
+      id: request.query?.id,
+      slug: request.query?.slug,
+    });
     response.status(200).json(proposal);
   } catch (error) {
     const failure = getErrorResponse(error);

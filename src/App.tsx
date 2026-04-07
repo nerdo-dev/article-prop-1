@@ -10,11 +10,38 @@ import { NerdConfLogo } from './components/NerdConfLogo';
 
 type ProposalResponse = {
   id?: string;
+  slug?: string | null;
   title: string;
   markdownContent: string;
   coverImage: string | null;
   createdAt: string;
 };
+
+const DEFAULT_PROPOSAL_TITLE = 'Proposal Draft';
+const DEFAULT_PROPOSAL_SLUG = 'proposal-draft';
+
+function slugify(value: string) {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .replace(/-{2,}/g, '-');
+}
+
+function getRouteSlug(pathname: string) {
+  const normalizedPath = pathname.replace(/^\/+|\/+$/g, '');
+
+  if (!normalizedPath) {
+    return null;
+  }
+
+  if (normalizedPath.includes('/')) {
+    return null;
+  }
+
+  return decodeURIComponent(normalizedPath);
+}
 
 async function readJsonResponse(response: Response) {
   const contentType = response.headers.get('content-type') || '';
@@ -26,7 +53,9 @@ async function readJsonResponse(response: Response) {
 }
 
 export default function App() {
-  const [proposalTitle, setProposalTitle] = useState('Proposal Draft');
+  const [proposalTitle, setProposalTitle] = useState(DEFAULT_PROPOSAL_TITLE);
+  const [proposalSlug, setProposalSlug] = useState(DEFAULT_PROPOSAL_SLUG);
+  const [hasCustomSlug, setHasCustomSlug] = useState(false);
   const [markdownContent, setMarkdownContent] = useState<string>('');
   const [coverImage, setCoverImage] = useState<string | null>(null);
   
@@ -44,7 +73,8 @@ export default function App() {
   const urlParams = new URLSearchParams(window.location.search);
   const blobUrl = urlParams.get('blob');
   const proposalId = urlParams.get('id');
-  const isPublicView = !!(blobUrl || proposalId);
+  const routeSlug = getRouteSlug(window.location.pathname);
+  const isPublicView = !!(blobUrl || proposalId || routeSlug);
 
   const loadBlobProposal = async (blobUrlParam: string) => {
     let parsedUrl: URL;
@@ -80,6 +110,17 @@ export default function App() {
     return payload as ProposalResponse;
   };
 
+  const loadSlugProposal = async (proposalSlugParam: string) => {
+    const response = await fetch(`/api/proposal?slug=${encodeURIComponent(proposalSlugParam)}`);
+    const payload = await readJsonResponse(response);
+
+    if (!response.ok) {
+      throw new Error(payload?.error || 'Failed to load proposal.');
+    }
+
+    return payload as ProposalResponse;
+  };
+
   useEffect(() => {
     if (!isPublicView) {
       setIsEditing(true);
@@ -90,14 +131,20 @@ export default function App() {
   }, [isPublicView]);
 
   useEffect(() => {
-    document.title = proposalTitle.trim() || 'Proposal Draft';
+    if (!isPublicView && !hasCustomSlug) {
+      setProposalSlug(slugify(proposalTitle) || DEFAULT_PROPOSAL_SLUG);
+    }
+  }, [hasCustomSlug, isPublicView, proposalTitle]);
+
+  useEffect(() => {
+    document.title = proposalTitle.trim() || DEFAULT_PROPOSAL_TITLE;
   }, [proposalTitle]);
 
   useEffect(() => {
     let isCancelled = false;
 
     const loadProposal = async () => {
-      if (!blobUrl && !proposalId) {
+      if (!blobUrl && !proposalId && !routeSlug) {
         setIsLoading(false);
         return;
       }
@@ -105,10 +152,14 @@ export default function App() {
       try {
         const data = blobUrl
           ? await loadBlobProposal(blobUrl)
-          : await loadLegacyProposal(proposalId as string);
+          : proposalId
+            ? await loadLegacyProposal(proposalId)
+            : await loadSlugProposal(routeSlug as string);
 
         if (!isCancelled) {
-          setProposalTitle(data.title || 'Proposal Draft');
+          setProposalTitle(data.title || DEFAULT_PROPOSAL_TITLE);
+          setProposalSlug(data.slug || routeSlug || DEFAULT_PROPOSAL_SLUG);
+          setHasCustomSlug(true);
           setMarkdownContent(data.markdownContent);
           setCoverImage(data.coverImage || null);
         }
@@ -129,7 +180,7 @@ export default function App() {
     return () => {
       isCancelled = true;
     };
-  }, [blobUrl, proposalId]);
+  }, [blobUrl, proposalId, routeSlug]);
 
   const compressImage = (dataUrl: string, maxWidth = 1200): Promise<string> => {
     return new Promise((resolve) => {
@@ -166,7 +217,8 @@ export default function App() {
         compressedImage = await compressImage(coverImage);
       }
 
-      const title = proposalTitle.trim() || 'Proposal Draft';
+      const title = proposalTitle.trim() || DEFAULT_PROPOSAL_TITLE;
+      const slug = slugify(proposalSlug) || slugify(title) || DEFAULT_PROPOSAL_SLUG;
 
       const response = await fetch('/api/publish', {
         method: 'POST',
@@ -175,6 +227,7 @@ export default function App() {
         },
         body: JSON.stringify({
           title,
+          slug,
           markdownContent,
           coverImage: compressedImage ?? null,
         }),
@@ -190,6 +243,7 @@ export default function App() {
         throw new Error('Publish API returned an invalid share URL.');
       }
       
+      setProposalSlug(payload?.slug || slug);
       setShareLink(link);
       await navigator.clipboard.writeText(link);
       setShowPublishModal(true);
@@ -210,7 +264,7 @@ export default function App() {
         const newContent = e.target?.result as string;
         const uploadedTitleMatch = newContent.match(/^#\s+(.+)$/m);
         setMarkdownContent(newContent);
-        if (uploadedTitleMatch && (!proposalTitle.trim() || proposalTitle === 'Proposal Draft')) {
+        if (uploadedTitleMatch && (!proposalTitle.trim() || proposalTitle === DEFAULT_PROPOSAL_TITLE)) {
           setProposalTitle(uploadedTitleMatch[1].trim());
         }
         editorRef.current?.setMarkdown(newContent);
@@ -271,7 +325,7 @@ export default function App() {
     );
   }
 
-  const title = proposalTitle.trim() || 'Proposal Draft';
+  const title = proposalTitle.trim() || DEFAULT_PROPOSAL_TITLE;
   const contentWithoutTitle = markdownContent.replace(/^#\s+(.+)$/m, (_, headingTitle: string) => {
     return headingTitle.trim() === title ? '' : `# ${headingTitle}`;
   }).trim();
@@ -300,6 +354,19 @@ export default function App() {
                 placeholder="Proposal title"
                 className="w-44 sm:w-56 bg-[#16181c] border border-gray-800 rounded-lg px-3 py-1.5 text-sm text-[#e7e9ea] outline-none focus:border-[#1d9bf0]"
               />
+              <div className="flex items-center w-40 sm:w-48 bg-[#16181c] border border-gray-800 rounded-lg px-3 py-1.5 text-sm focus-within:border-[#1d9bf0]">
+                <span className="text-gray-500 mr-1">/</span>
+                <input
+                  type="text"
+                  value={proposalSlug}
+                  onChange={(event) => {
+                    setHasCustomSlug(true);
+                    setProposalSlug(slugify(event.target.value));
+                  }}
+                  placeholder="public-url"
+                  className="w-full bg-transparent text-[#e7e9ea] outline-none"
+                />
+              </div>
               <button 
                 onClick={() => setIsEditing(!isEditing)}
                 className="text-[#1d9bf0] font-bold hover:underline text-sm"

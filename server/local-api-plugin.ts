@@ -63,7 +63,10 @@ export function localProposalApiPlugin(): Plugin {
           }
 
           if (request.method === 'GET' && url.pathname === '/api/proposal') {
-            const result = await fetchProposal(url.searchParams.get('id'));
+            const result = await fetchProposal({
+              id: url.searchParams.get('id'),
+              slug: url.searchParams.get('slug'),
+            });
             sendJson(response, 200, result);
             return;
           }

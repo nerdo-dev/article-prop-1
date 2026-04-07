@@ -2,19 +2,26 @@ import { BlobNotFoundError, head, put } from '@vercel/blob';
 
 export interface PublishProposalInput {
   title: string;
+  slug: string;
   markdownContent: string;
   coverImage: string | null;
 }
 
-export interface ProposalSnapshot extends PublishProposalInput {
+export interface ProposalSnapshot {
   id: string;
+  slug: string | null;
+  title: string;
+  markdownContent: string;
+  coverImage: string | null;
   createdAt: string;
 }
 
 const MAX_TITLE_LENGTH = 200;
+const MAX_SLUG_LENGTH = 80;
 const MAX_MARKDOWN_LENGTH = 500_000;
 const MAX_COVER_IMAGE_LENGTH = 2_000_000;
 const PROPOSAL_ID_PATTERN = /^[a-f0-9-]{36}$/i;
+const PROPOSAL_SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 export class ProposalApiError extends Error {
   status: number;
@@ -41,6 +48,10 @@ function proposalPath(id: string) {
   return `proposals/${id}.json`;
 }
 
+function proposalSlugPath(slug: string) {
+  return `proposals/slugs/${slug}.json`;
+}
+
 function assertValidProposalId(id: string | null | undefined) {
   if (!id) {
     throw new ProposalApiError(400, 'Missing proposal id.');
@@ -53,6 +64,36 @@ function assertValidProposalId(id: string | null | undefined) {
   return id;
 }
 
+function normalizeProposalSlug(value: string) {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .replace(/-{2,}/g, '-');
+}
+
+function assertValidProposalSlug(slug: string | null | undefined) {
+  if (!slug) {
+    throw new ProposalApiError(400, 'Missing proposal slug.');
+  }
+
+  const normalizedSlug = normalizeProposalSlug(slug);
+
+  if (!normalizedSlug) {
+    throw new ProposalApiError(400, 'Proposal slug is required.');
+  }
+
+  if (normalizedSlug.length > MAX_SLUG_LENGTH || !PROPOSAL_SLUG_PATTERN.test(normalizedSlug)) {
+    throw new ProposalApiError(
+      400,
+      'Proposal slug must use lowercase letters, numbers, and hyphens only.'
+    );
+  }
+
+  return normalizedSlug;
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
 }
@@ -63,6 +104,7 @@ export function parsePublishProposalInput(body: unknown): PublishProposalInput {
   }
 
   const rawTitle = body.title;
+  const rawSlug = body.slug;
   const rawMarkdown = body.markdownContent;
   const rawCoverImage = body.coverImage;
 
@@ -79,6 +121,8 @@ export function parsePublishProposalInput(body: unknown): PublishProposalInput {
   }
 
   const title = rawTitle.trim();
+  const slugSource = typeof rawSlug === 'string' ? rawSlug : title;
+  const slug = assertValidProposalSlug(slugSource);
   const markdownContent = rawMarkdown.trim();
   const coverImage = typeof rawCoverImage === 'string' ? rawCoverImage : null;
 
@@ -96,6 +140,7 @@ export function parsePublishProposalInput(body: unknown): PublishProposalInput {
 
   return {
     title,
+    slug,
     markdownContent,
     coverImage,
   };
@@ -107,6 +152,7 @@ function parseStoredSnapshot(data: unknown): ProposalSnapshot {
   }
 
   const id = data.id;
+  const rawSlug = data.slug;
   const title = data.title;
   const markdownContent = data.markdownContent;
   const coverImage = data.coverImage;
@@ -122,8 +168,11 @@ function parseStoredSnapshot(data: unknown): ProposalSnapshot {
     throw new ProposalApiError(500, 'Stored proposal payload is malformed.');
   }
 
+  const slug = typeof rawSlug === 'string' ? assertValidProposalSlug(rawSlug) : null;
+
   return {
     id,
+    slug,
     title,
     markdownContent,
     coverImage: coverImage === null ? null : (coverImage as string),
@@ -135,44 +184,66 @@ export async function publishProposal(input: PublishProposalInput, origin: strin
   requireBlobToken();
 
   const id = crypto.randomUUID();
+  const slug = assertValidProposalSlug(input.slug);
   const snapshot: ProposalSnapshot = {
     id,
+    slug,
     title: input.title,
     markdownContent: input.markdownContent,
     coverImage: input.coverImage,
     createdAt: new Date().toISOString(),
   };
 
-  const blob = await put(proposalPath(id), JSON.stringify(snapshot), {
+  const blob = await put(proposalSlugPath(slug), JSON.stringify(snapshot), {
     access: 'public',
     addRandomSuffix: false,
     contentType: 'application/json; charset=utf-8',
   });
 
-  const shareUrl = new URL('/', origin);
-  shareUrl.searchParams.set('blob', blob.url);
+  const shareUrl = new URL(`/${slug}`, origin);
 
   return {
     id,
+    slug,
     blobUrl: blob.url,
     shareUrl: shareUrl.toString(),
   };
 }
 
-export async function fetchProposal(id: string | null | undefined) {
+async function fetchProposalByBlobPath(path: string) {
+  const blob = await head(path);
+  const response = await fetch(blob.url);
+
+  if (!response.ok) {
+    throw new ProposalApiError(404, 'Proposal not found.');
+  }
+
+  const payload = await response.json();
+  return parseStoredSnapshot(payload);
+}
+
+async function fetchProposalById(id: string | null | undefined) {
+  const validId = assertValidProposalId(id);
+  return fetchProposalByBlobPath(proposalPath(validId));
+}
+
+async function fetchProposalBySlug(slug: string | null | undefined) {
+  const validSlug = assertValidProposalSlug(slug);
+  return fetchProposalByBlobPath(proposalSlugPath(validSlug));
+}
+
+export async function fetchProposal(input: {
+  id?: string | null | undefined;
+  slug?: string | null | undefined;
+}) {
   requireBlobToken();
 
-  const validId = assertValidProposalId(id);
   try {
-    const blob = await head(proposalPath(validId));
-    const response = await fetch(blob.url);
-
-    if (!response.ok) {
-      throw new ProposalApiError(404, 'Proposal not found.');
+    if (input.slug) {
+      return await fetchProposalBySlug(input.slug);
     }
 
-    const payload = await response.json();
-    return parseStoredSnapshot(payload);
+    return await fetchProposalById(input.id);
   } catch (error) {
     if (error instanceof BlobNotFoundError) {
       throw new ProposalApiError(404, 'Proposal not found.');
