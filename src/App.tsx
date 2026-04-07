@@ -39,10 +39,11 @@ export default function App() {
   const [showPublishModal, setShowPublishModal] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
 
-  // Extract slug from URL path (e.g., /master-log) or query param (e.g., ?slug=master-log)
-  const urlParams = new URLSearchParams(window.location.search);
+  // Extract slug from URL path (e.g., /master-log)
+  // Only valid slugs (lowercase alphanumeric with hyphens) are treated as public proposals
   const pathSlug = window.location.pathname.slice(1); // Remove leading "/"
-  const proposalSlug = urlParams.get('slug') || (pathSlug && pathSlug !== '' ? pathSlug : null);
+  const isValidSlug = /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(pathSlug);
+  const proposalSlug = isValidSlug ? pathSlug : null;
   const isPublicView = !!proposalSlug;
 
   useEffect(() => {
