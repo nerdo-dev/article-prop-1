@@ -1,4 +1,4 @@
-import { put, list } from '@vercel/blob';
+import { put, list, getDownloadUrl } from '@vercel/blob';
 
 export interface PublishProposalInput {
   title: string;
@@ -138,8 +138,6 @@ export async function publishProposal(input: PublishProposalInput, origin: strin
   requireBlobToken();
 
   const id = crypto.randomUUID();
-  console.log('[v0] Publishing proposal:', id);
-  
   const snapshot: ProposalSnapshot = {
     id,
     title: input.title,
@@ -148,23 +146,15 @@ export async function publishProposal(input: PublishProposalInput, origin: strin
     createdAt: new Date().toISOString(),
   };
 
-  console.log('[v0] Snapshot created, uploading to blob...');
-  try {
-    const result = await put(proposalPath(id), JSON.stringify(snapshot), {
-      access: 'public',
-      addRandomSuffix: false,
-      contentType: 'application/json; charset=utf-8',
-    });
-    console.log('[v0] Blob uploaded successfully:', result.url);
-  } catch (err) {
-    console.error('[v0] Error uploading to blob:', err);
-    throw err;
-  }
+  await put(proposalPath(id), JSON.stringify(snapshot), {
+    access: 'private',
+    addRandomSuffix: false,
+    contentType: 'application/json; charset=utf-8',
+  });
 
   const shareUrl = new URL('/', origin);
   shareUrl.searchParams.set('id', id);
 
-  console.log('[v0] Publishing complete, share URL:', shareUrl.toString());
   return {
     id,
     shareUrl: shareUrl.toString(),
@@ -186,7 +176,8 @@ export async function fetchProposal(id: string | null | undefined) {
     }
     
     const blob = blobs[0];
-    const response = await fetch(blob.url);
+    const downloadUrl = await getDownloadUrl(blob.url);
+    const response = await fetch(downloadUrl);
 
     if (!response.ok) {
       throw new ProposalApiError(500, 'Failed to fetch proposal content.');
