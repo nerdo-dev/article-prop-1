@@ -6,7 +6,8 @@ import {defineConfig, loadEnv} from 'vite';
 import {localProposalApiPlugin} from './server/local-api-plugin';
 
 export default defineConfig(({mode}) => {
-  loadEnv(mode, '.', '');
+  const env = loadEnv(mode, '.', '');
+  Object.assign(process.env, env);
   return {
     plugins: [react(), tailwindcss(), localProposalApiPlugin()],
     resolve: {
