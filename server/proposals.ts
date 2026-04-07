@@ -1,4 +1,4 @@
-import { put, list, getDownloadUrl } from '@vercel/blob';
+import { put, list } from '@vercel/blob';
 
 export interface PublishProposalInput {
   title: string;
@@ -147,7 +147,7 @@ export async function publishProposal(input: PublishProposalInput, origin: strin
   };
 
   await put(proposalPath(id), JSON.stringify(snapshot), {
-    access: 'private',
+    access: 'public',
     addRandomSuffix: false,
     contentType: 'application/json; charset=utf-8',
   });
@@ -176,8 +176,7 @@ export async function fetchProposal(id: string | null | undefined) {
     }
     
     const blob = blobs[0];
-    const downloadUrl = await getDownloadUrl(blob.url);
-    const response = await fetch(downloadUrl);
+    const response = await fetch(blob.url);
 
     if (!response.ok) {
       throw new ProposalApiError(500, 'Failed to fetch proposal content.');
