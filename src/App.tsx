@@ -373,6 +373,14 @@ export default function App() {
               >
                 {isEditing ? 'Preview' : 'Edit'}
               </button>
+              <button
+                onClick={handleDownloadMd}
+                disabled={!markdownContent.trim()}
+                className="text-[#1d9bf0] font-bold hover:underline text-sm disabled:opacity-50 disabled:no-underline flex items-center space-x-1"
+              >
+                <Download className="w-4 h-4" />
+                <span className="hidden sm:inline-block">.md</span>
+              </button>
               <button 
                 onClick={handleShare}
                 disabled={isSharing || !markdownContent.trim()}
@@ -505,14 +513,15 @@ export default function App() {
                 </div>
                 <span className="text-sm">Confidential</span>
               </div>
-              <div className="flex items-center space-x-1">
-                <div 
+              <div className="flex items-center space-x-2">
+                <button
                   onClick={handleDownloadMd}
-                  className="p-2 rounded-full hover:bg-[#1d9bf0]/10 hover:text-[#1d9bf0] cursor-pointer transition-colors"
-                  title="Download .md"
+                  className="flex items-center space-x-2 px-3 py-2 rounded-full border border-gray-800 hover:border-[#1d9bf0]/40 hover:bg-[#1d9bf0]/10 hover:text-[#1d9bf0] transition-colors"
+                  title=".md"
                 >
-                  <Download className="w-5 h-5" />
-                </div>
+                  <Download className="w-4 h-4" />
+                  <span className="text-sm font-medium">.md</span>
+                </button>
                 <div className="p-2 rounded-full hover:bg-[#1d9bf0]/10 hover:text-[#1d9bf0] cursor-pointer transition-colors">
                   <Bookmark className="w-5 h-5" />
                 </div>
