@@ -313,11 +313,7 @@ export default function App() {
       const reader = new FileReader();
       reader.onload = (e) => {
         const newContent = e.target?.result as string;
-        const uploadedTitleMatch = newContent.match(/^#\s+(.+)$/m);
         setMarkdownContent(newContent);
-        if (uploadedTitleMatch && (!proposalTitle.trim() || proposalTitle === DEFAULT_PROPOSAL_TITLE)) {
-          setProposalTitle(uploadedTitleMatch[1].trim());
-        }
         editorRef.current?.setMarkdown(newContent);
       };
       reader.readAsText(file);
@@ -401,10 +397,11 @@ export default function App() {
     );
   }
 
-  const title = proposalTitle.trim() || DEFAULT_PROPOSAL_TITLE;
-  const contentWithoutTitle = markdownContent.replace(/^#\s+(.+)$/m, (_, headingTitle: string) => {
-    return headingTitle.trim() === title ? '' : `# ${headingTitle}`;
-  }).trim();
+  const markdownHeadingMatch = markdownContent.match(/^#\s+(.+)$/m);
+  const articleTitle = markdownHeadingMatch?.[1].trim() || proposalTitle.trim() || DEFAULT_PROPOSAL_TITLE;
+  const contentWithoutTitle = markdownHeadingMatch
+    ? markdownContent.replace(/^#\s+(.+)$/m, '').trim()
+    : markdownContent.trim();
 
   return (
     <div className="min-h-screen bg-black text-[#e7e9ea] font-sans selection:bg-[#1d9bf0] selection:text-white pb-20">
@@ -562,7 +559,7 @@ export default function App() {
 
           <div className="px-4 pt-5 pb-6">
             <h1 className="text-[2.45rem] sm:text-[3.15rem] font-bold text-[#e7e9ea] mb-4 leading-[0.98] tracking-tight">
-              {title}
+              {articleTitle}
             </h1>
 
             <div className="flex items-center justify-between pb-4 text-[#71767b]">
