@@ -606,7 +606,7 @@ export default function App() {
               prose-headings:text-[#e7e9ea] prose-headings:font-bold prose-headings:tracking-tight
               prose-h2:text-2xl prose-h2:mt-8 prose-h2:mb-4
               prose-h3:text-xl prose-h3:mt-6 prose-h3:mb-3
-              prose-a:text-[#1d9bf0] prose-a:no-underline hover:prose-a:underline
+              prose-a:text-[#8ecdfc] prose-a:underline prose-a:decoration-[#1d9bf0]/55 prose-a:underline-offset-[0.18em] prose-a:bg-[#1d9bf0]/12 prose-a:px-1 prose-a:py-0.5 prose-a:rounded-md hover:prose-a:bg-[#1d9bf0]/20 hover:prose-a:text-[#c7e8ff] hover:prose-a:decoration-[#63b3ff]/85
               prose-strong:text-[#e7e9ea]
               prose-ul:text-[#e7e9ea] prose-ol:text-[#e7e9ea]
               prose-li:marker:text-gray-500

@@ -87,12 +87,22 @@
 }
 
 .mdxeditor-dark [data-lexical-editor] a {
-  color: #1d9bf0;
-  text-decoration: none;
+  color: #8ecdfc;
+  text-decoration: underline;
+  text-decoration-color: rgba(29, 155, 240, 0.55);
+  text-underline-offset: 0.18em;
+  background-color: rgba(29, 155, 240, 0.12);
+  padding: 0.05rem 0.32rem;
+  border-radius: 0.35rem;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+  transition: background-color 160ms ease, color 160ms ease, text-decoration-color 160ms ease;
 }
 
 .mdxeditor-dark [data-lexical-editor] a:hover {
-  text-decoration: underline;
+  color: #c7e8ff;
+  background-color: rgba(29, 155, 240, 0.2);
+  text-decoration-color: rgba(99, 179, 255, 0.85);
 }
 
 .mdxeditor-dark [data-lexical-editor] ul {
