@@ -1,12 +1,14 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { Suspense, useState, useEffect, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { 
   MessageCircle, Repeat2, Heart, BarChart2, Bookmark, BadgeCheck, Upload, Loader2, Check,
   Link as LinkIcon, ImagePlus, X, Download
 } from 'lucide-react';
-import { MDXEditor, headingsPlugin, listsPlugin, quotePlugin, thematicBreakPlugin, markdownShortcutPlugin, toolbarPlugin, UndoRedo, BoldItalicUnderlineToggles, BlockTypeSelect, CreateLink, linkPlugin, linkDialogPlugin, MDXEditorMethods } from '@mdxeditor/editor';
 import { NerdConfLogo } from './components/NerdConfLogo';
+import type { ProposalEditorHandle } from './components/ProposalEditor';
+
+const ProposalEditor = React.lazy(() => import('./components/ProposalEditor'));
 
 type ProposalResponse = {
   id?: string;
@@ -106,7 +108,7 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
 
   const [isEditing, setIsEditing] = useState(false);
-  const editorRef = useRef<MDXEditorMethods>(null);
+  const editorRef = useRef<ProposalEditorHandle | null>(null);
 
   const [showPublishModal, setShowPublishModal] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
@@ -591,31 +593,19 @@ export default function App() {
           
           {/* MDXEditor */}
           <div className="flex-1 w-full bg-black">
-            <MDXEditor
-              ref={editorRef}
-              markdown={markdownContent}
-              onChange={setMarkdownContent}
-              className="mdxeditor-dark dark-theme dark-editor"
-              plugins={[
-                headingsPlugin(),
-                listsPlugin(),
-                quotePlugin(),
-                thematicBreakPlugin(),
-                markdownShortcutPlugin(),
-                linkPlugin(),
-                linkDialogPlugin(),
-                toolbarPlugin({
-                  toolbarContents: () => (
-                    <>
-                      <UndoRedo />
-                      <BoldItalicUnderlineToggles />
-                      <BlockTypeSelect />
-                      <CreateLink />
-                    </>
-                  )
-                })
-              ]}
-            />
+            <Suspense
+              fallback={
+                <div className="flex min-h-[500px] items-center justify-center border-t border-gray-800">
+                  <Loader2 className="h-7 w-7 animate-spin text-[#1d9bf0]" />
+                </div>
+              }
+            >
+              <ProposalEditor
+                editorRef={editorRef}
+                markdown={markdownContent}
+                onChange={setMarkdownContent}
+              />
+            </Suspense>
           </div>
         </main>
       ) : (
